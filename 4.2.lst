@@ -1,0 +1,594 @@
+GAMS 36.2.0  r433180e Released Sep  3, 2021 WEX-WEI x86 64bit/MS Windows - 12/16/21 05:31:37 Page 1
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+C o m p i l a t i o n
+
+
+   1  scalar BigM /1000/;
+   2  SET
+   3  PD  'Products'  /A, B, C/
+   4  PC  'Processes' /I, II, III/
+   5  ;
+   6  Parameters
+   7  SUPPLY(PD)      'Maximum Raw Product Supply'
+   8  /   A   16
+   9      B   inf
+  10      C   0 /
+  11  COST_SUPPLY(PD) 'Raw Product Cost'
+  12  /   A   0.5
+  13      B   0.95
+  14      C   0 /
+  15  COST_V(PC)      'Process Variable Cost'
+  16  /   I   0.25
+  17      II  0.4
+  18      III 0.55 /
+  19  COST_F(PC)      'Process Fixed Cost'
+  20  /   I   1
+  21      II  1.5
+  22      III 2 /
+  23  DEMAND(PD)      'Maximum Product Demand'
+  24  /   A   0
+  25      B   0
+  26      C   15 /
+  27  B_PRICE(PD)     'Base Prices'
+  28  /   A   0
+  29      B   0
+  30      C   1.8 /
+  31  E_PRICE(PD)     'Excess Prices'
+  32  /   A   0
+  33      B   0
+  34      C   1.5 /
+  35  CUTOFF(PD)      'Demand Cutoff before excess'
+  36  /   A   0
+  37      B   0
+  38      C   10 /
+  39  D_PRICE(PD)     'Excess Prices Difference'
+  40  ;
+  41  D_PRICE(PD) = B_PRICE(PD) - E_PRICE(PD);
+  42  Table
+  43  Input(PC,PD)
+  44      A       B       C
+  45  I   1       0       0
+  46  II  0       1       0
+  47  III 0       1       0
+  48  ;
+  49   
+  50  Table
+  51  Output(PC,PD)
+  52      A       B       C
+  53  I   0       0.9     0
+  54  II  0       0       0.82
+  55  III 0       0       0.95
+  56  ;
+  57   
+  58   
+  59   
+  60  Variables
+  61  Profit
+  62  ;
+  63   
+  64  Positive Variables
+  65  UTIL(PC)        'Process Utilization'
+  66  BOUGHT(PD)      'Products Bought'
+  67  PRODUCED(PD)    'Products Produced'
+  68  EXCESS(PD)      'Excess Products'
+  69  INCOME          'Total Income'
+  70  EXPENSE         'Total Expense'
+  71  ;
+  72  Binary Variables
+  73  IS_ACTIVE(PC)   'Process is active'
+  74  IS_EXCESS(PD)   'Product is excess'
+  75  ;
+  76  Equations
+  77  OBJFUN          'Objective function'
+  78  BAL_PD(PD)      'Product Balance'
+  79  Supply_lim(PD)  'Supply Limit'
+  80  Demand_lim(PD)  'Demand Limit'
+  81  Active_c_1(PC)  'Active Check 1'
+  82  Active_c_2(PC)  'Active Check 2'
+  83  Excess_c_1(PD)  'Excess Check 1'
+  84  Excess_c_2(PD)  'Excess Check 2'
+  85  Excess_c_3(PD)  'Excess Check 3'
+  86  Excess_c_4(PD)  'Excess Check 4'
+  87  INCOME_EQ       'Income Equation'
+  88  EXPENSE_EQ      'Expense Equation'
+  89  ;
+  90  OBJFUN ..           Profit =e= INCOME - EXPENSE;
+  91  INCOME_EQ ..        INCOME =e= SUM(PD,PRODUCED(PD)*B_PRICE(PD)) - SUM(PD,EXCESS(PD)*D_PRICE(PD));
+  92  EXPENSE_EQ ..       EXPENSE =e= SUM(PC,UTIL(PC)*COST_V(PC)) + SUM(PC, IS_ACTIVE(PC)*COST_F(PC)) + SUM(PD, BOUGHT(PD)*COST_SUPPLY(PD));
+  93  BAL_PD(PD) ..       SUM(PC, Output(PC, PD) * UTIL(PC)) + BOUGHT(PD) =e= SUM(PC, Input(PC, PD) * UTIL(PC)) + PRODUCED(PD);
+  94  Supply_lim(PD) ..   BOUGHT(PD) =l= SUPPLY(PD);
+  95  Demand_lim(PD) ..   PRODUCED(PD) =l= DEMAND(PD);
+  96  Active_c_1(PC) ..   BigM*IS_ACTIVE(PC) =g= UTIL(PC);
+  97  Active_c_2(PC) ..   BigM*(1-IS_ACTIVE(PC)) =g= eps - UTIL(PC);
+  98  Excess_c_1(PD) ..   EXCESS(PD) =g= 0;
+  99  Excess_c_2(PD) ..   EXCESS(PD) =g= PRODUCED(PD) - CUTOFF(PD);
+ 100  Excess_c_3(PD) ..   EXCESS(PD) =l= BigM*(1-IS_EXCESS(PD));
+ 101  Excess_c_4(PD) ..   EXCESS(PD) =l= PRODUCED(PD) - CUTOFF(PD) + BigM*(IS_EXCESS(PD));
+ 102  Model Chemical /all/;
+ 103  Solve Chemical Using MIP Maximising Profit;
+
+
+COMPILATION TIME     =        0.000 SECONDS      3 MB  36.2.0 r433180e WEX-WEI
+GAMS 36.2.0  r433180e Released Sep  3, 2021 WEX-WEI x86 64bit/MS Windows - 12/16/21 05:31:37 Page 2
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Equation Listing    SOLVE Chemical Using MIP From line 103
+
+
+---- OBJFUN  =E=  Objective function
+
+OBJFUN..  Profit - INCOME + EXPENSE =E= 0 ; (LHS = 0)
+     
+
+---- BAL_PD  =E=  Product Balance
+
+BAL_PD(A)..  - UTIL(I) + BOUGHT(A) - PRODUCED(A) =E= 0 ; (LHS = 0)
+     
+BAL_PD(B)..  0.9*UTIL(I) - UTIL(II) - UTIL(III) + BOUGHT(B) - PRODUCED(B) =E= 0 ; (LHS = 0)
+     
+BAL_PD(C)..  0.82*UTIL(II) + 0.95*UTIL(III) + BOUGHT(C) - PRODUCED(C) =E= 0 ; (LHS = 0)
+     
+
+---- Supply_lim  =L=  Supply Limit
+
+Supply_lim(A)..  BOUGHT(A) =L= 16 ; (LHS = 0)
+     
+Supply_lim(B)..  BOUGHT(B) =L= +INF ; (LHS = 0)
+     
+Supply_lim(C)..  BOUGHT(C) =L= 0 ; (LHS = 0)
+     
+
+---- Demand_lim  =L=  Demand Limit
+
+Demand_lim(A)..  PRODUCED(A) =L= 0 ; (LHS = 0)
+     
+Demand_lim(B)..  PRODUCED(B) =L= 0 ; (LHS = 0)
+     
+Demand_lim(C)..  PRODUCED(C) =L= 15 ; (LHS = 0)
+     
+
+---- Active_c_1  =G=  Active Check 1
+
+Active_c_1(I)..  - UTIL(I) + 1000*IS_ACTIVE(I) =G= 0 ; (LHS = 0)
+     
+Active_c_1(II)..  - UTIL(II) + 1000*IS_ACTIVE(II) =G= 0 ; (LHS = 0)
+     
+Active_c_1(III)..  - UTIL(III) + 1000*IS_ACTIVE(III) =G= 0 ; (LHS = 0)
+     
+
+---- Active_c_2  =G=  Active Check 2
+
+Active_c_2(I)..  UTIL(I) - 1000*IS_ACTIVE(I) =G= -1000 ; (LHS = 0)
+     
+Active_c_2(II)..  UTIL(II) - 1000*IS_ACTIVE(II) =G= -1000 ; (LHS = 0)
+     
+Active_c_2(III)..  UTIL(III) - 1000*IS_ACTIVE(III) =G= -1000 ; (LHS = 0)
+     
+
+---- Excess_c_1  =G=  Excess Check 1
+
+Excess_c_1(A)..  EXCESS(A) =G= 0 ; (LHS = 0)
+     
+Excess_c_1(B)..  EXCESS(B) =G= 0 ; (LHS = 0)
+     
+Excess_c_1(C)..  EXCESS(C) =G= 0 ; (LHS = 0)
+     
+
+---- Excess_c_2  =G=  Excess Check 2
+
+Excess_c_2(A)..  - PRODUCED(A) + EXCESS(A) =G= 0 ; (LHS = 0)
+     
+Excess_c_2(B)..  - PRODUCED(B) + EXCESS(B) =G= 0 ; (LHS = 0)
+     
+Excess_c_2(C)..  - PRODUCED(C) + EXCESS(C) =G= -10 ; (LHS = 0)
+     
+
+---- Excess_c_3  =L=  Excess Check 3
+
+Excess_c_3(A)..  EXCESS(A) + 1000*IS_EXCESS(A) =L= 1000 ; (LHS = 0)
+     
+Excess_c_3(B)..  EXCESS(B) + 1000*IS_EXCESS(B) =L= 1000 ; (LHS = 0)
+     
+Excess_c_3(C)..  EXCESS(C) + 1000*IS_EXCESS(C) =L= 1000 ; (LHS = 0)
+     
+
+---- Excess_c_4  =L=  Excess Check 4
+
+Excess_c_4(A)..  - PRODUCED(A) + EXCESS(A) - 1000*IS_EXCESS(A) =L= 0 ; (LHS = 0)
+     
+Excess_c_4(B)..  - PRODUCED(B) + EXCESS(B) - 1000*IS_EXCESS(B) =L= 0 ; (LHS = 0)
+     
+Excess_c_4(C)..  - PRODUCED(C) + EXCESS(C) - 1000*IS_EXCESS(C) =L= -10 ; (LHS = 0, INFES = 10 ****)
+     
+
+---- INCOME_EQ  =E=  Income Equation
+
+INCOME_EQ..  - 1.8*PRODUCED(C) + 0.3*EXCESS(C) + INCOME =E= 0 ; (LHS = 0)
+     
+
+---- EXPENSE_EQ  =E=  Expense Equation
+
+EXPENSE_EQ..  - 0.25*UTIL(I) - 0.4*UTIL(II) - 0.55*UTIL(III) - 0.5*BOUGHT(A) - 0.95*BOUGHT(B) + EXPENSE - IS_ACTIVE(I) - 1.5*IS_ACTIVE(II) - 2*IS_ACTIVE(III) =E= 0 ; (LHS = 0)
+     
+GAMS 36.2.0  r433180e Released Sep  3, 2021 WEX-WEI x86 64bit/MS Windows - 12/16/21 05:31:37 Page 3
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Column Listing      SOLVE Chemical Using MIP From line 103
+
+
+---- Profit  
+
+Profit
+                (.LO, .L, .UP, .M = -INF, 0, +INF, 0)
+        1       OBJFUN
+
+
+---- UTIL  Process Utilization
+
+UTIL(I)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1       BAL_PD(A)
+        0.9     BAL_PD(B)
+       -1       Active_c_1(I)
+        1       Active_c_2(I)
+       -0.25    EXPENSE_EQ
+
+UTIL(II)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1       BAL_PD(B)
+        0.82    BAL_PD(C)
+       -1       Active_c_1(II)
+        1       Active_c_2(II)
+       -0.4     EXPENSE_EQ
+
+UTIL(III)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1       BAL_PD(B)
+        0.95    BAL_PD(C)
+       -1       Active_c_1(III)
+        1       Active_c_2(III)
+       -0.55    EXPENSE_EQ
+
+
+---- BOUGHT  Products Bought
+
+BOUGHT(A)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       BAL_PD(A)
+        1       Supply_lim(A)
+       -0.5     EXPENSE_EQ
+
+BOUGHT(B)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       BAL_PD(B)
+        1       Supply_lim(B)
+       -0.95    EXPENSE_EQ
+
+BOUGHT(C)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       BAL_PD(C)
+        1       Supply_lim(C)
+
+
+---- PRODUCED  Products Produced
+
+PRODUCED(A)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1       BAL_PD(A)
+        1       Demand_lim(A)
+       -1       Excess_c_2(A)
+       -1       Excess_c_4(A)
+
+PRODUCED(B)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1       BAL_PD(B)
+        1       Demand_lim(B)
+       -1       Excess_c_2(B)
+       -1       Excess_c_4(B)
+
+PRODUCED(C)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1       BAL_PD(C)
+        1       Demand_lim(C)
+       -1       Excess_c_2(C)
+       -1       Excess_c_4(C)
+       -1.8     INCOME_EQ
+
+
+---- EXCESS  Excess Products
+
+EXCESS(A)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       Excess_c_1(A)
+        1       Excess_c_2(A)
+        1       Excess_c_3(A)
+        1       Excess_c_4(A)
+
+EXCESS(B)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       Excess_c_1(B)
+        1       Excess_c_2(B)
+        1       Excess_c_3(B)
+        1       Excess_c_4(B)
+
+EXCESS(C)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       Excess_c_1(C)
+        1       Excess_c_2(C)
+        1       Excess_c_3(C)
+        1       Excess_c_4(C)
+        0.3     INCOME_EQ
+
+
+---- INCOME  Total Income
+
+INCOME
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1       OBJFUN
+        1       INCOME_EQ
+
+
+---- EXPENSE  Total Expense
+
+EXPENSE
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       OBJFUN
+        1       EXPENSE_EQ
+
+
+---- IS_ACTIVE  Process is active
+
+IS_ACTIVE(I)
+                (.LO, .L, .UP, .M = 0, 0, 1, 0)
+     1000       Active_c_1(I)
+    -1000       Active_c_2(I)
+       -1       EXPENSE_EQ
+
+IS_ACTIVE(II)
+                (.LO, .L, .UP, .M = 0, 0, 1, 0)
+     1000       Active_c_1(II)
+    -1000       Active_c_2(II)
+       -1.5     EXPENSE_EQ
+
+IS_ACTIVE(III)
+                (.LO, .L, .UP, .M = 0, 0, 1, 0)
+     1000       Active_c_1(III)
+    -1000       Active_c_2(III)
+       -2       EXPENSE_EQ
+
+
+---- IS_EXCESS  Product is excess
+
+IS_EXCESS(A)
+                (.LO, .L, .UP, .M = 0, 0, 1, 0)
+     1000       Excess_c_3(A)
+    -1000       Excess_c_4(A)
+
+IS_EXCESS(B)
+                (.LO, .L, .UP, .M = 0, 0, 1, 0)
+     1000       Excess_c_3(B)
+    -1000       Excess_c_4(B)
+
+IS_EXCESS(C)
+                (.LO, .L, .UP, .M = 0, 0, 1, 0)
+     1000       Excess_c_3(C)
+    -1000       Excess_c_4(C)
+
+GAMS 36.2.0  r433180e Released Sep  3, 2021 WEX-WEI x86 64bit/MS Windows - 12/16/21 05:31:37 Page 4
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Model Statistics    SOLVE Chemical Using MIP From line 103
+
+
+MODEL STATISTICS
+
+BLOCKS OF EQUATIONS          12     SINGLE EQUATIONS           30
+BLOCKS OF VARIABLES           9     SINGLE VARIABLES           21
+NON ZERO ELEMENTS            69     DISCRETE VARIABLES          6
+
+
+GENERATION TIME      =        0.000 SECONDS      4 MB  36.2.0 r433180e WEX-WEI
+GAMS 36.2.0  r433180e Released Sep  3, 2021 WEX-WEI x86 64bit/MS Windows - 12/16/21 05:31:37 Page 5
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Solution Report     SOLVE Chemical Using MIP From line 103
+
+
+               S O L V E      S U M M A R Y
+
+     MODEL   Chemical            OBJECTIVE  Profit
+     TYPE    MIP                 DIRECTION  MAXIMIZE
+     SOLVER  CPLEX               FROM LINE  103
+
+**** SOLVER STATUS     1 Normal Completion
+**** MODEL STATUS      1 Optimal
+**** OBJECTIVE VALUE                0.6000
+
+ RESOURCE USAGE, LIMIT          0.016 10000000000.000
+ ITERATION COUNT, LIMIT         7    2147483647
+--- *** This solver runs with a demo license. No commercial use.
+--- GMO setup time: 0.00s
+--- GMO memory 0.50 Mb (peak 0.50 Mb)
+--- Dictionary memory 0.00 Mb
+--- Cplex 20.1.0.1 link memory 0.00 Mb (peak 0.00 Mb)
+--- Starting Cplex
+
+
+--- MIP status (101): integer optimal solution.
+--- Cplex Time: 0.00sec (det. 0.12 ticks)
+
+--- Fixing integer variables and solving final LP...
+
+
+--- Fixed MIP status (1): optimal.
+--- Cplex Time: 0.00sec (det. 0.03 ticks)
+
+
+Proven optimal solution
+MIP Solution:            0.600000    (7 iterations, 0 nodes)
+Final Solve:             0.600000    (1 iterations)
+
+Best possible:           0.600000
+Absolute gap:            0.000000
+Relative gap:            0.000000
+
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- EQU OBJFUN              .              .              .             1.0000      
+
+  OBJFUN  Objective function
+
+---- EQU BAL_PD  Product Balance
+
+         LOWER          LEVEL          UPPER         MARGINAL
+
+A          .              .              .            -0.5375      
+B          .              .              .            -0.8750      
+C          .              .              .            -1.5000      
+
+---- EQU Supply_lim  Supply Limit
+
+         LOWER          LEVEL          UPPER         MARGINAL
+
+A        -INF           16.0000        16.0000         0.0375      
+B        -INF             .            +INF             .          
+C        -INF             .              .             1.5000      
+
+---- EQU Demand_lim  Demand Limit
+
+         LOWER          LEVEL          UPPER         MARGINAL
+
+A        -INF             .              .              .          
+B        -INF             .              .              .          
+C        -INF           13.6800        15.0000          .          
+
+---- EQU Active_c_1  Active Check 1
+
+           LOWER          LEVEL          UPPER         MARGINAL
+
+I            .           984.0000        +INF             .          
+II           .              .            +INF             .          
+III          .           985.6000        +INF             .          
+
+---- EQU Active_c_2  Active Check 2
+
+           LOWER          LEVEL          UPPER         MARGINAL
+
+I       -1000.0000      -984.0000        +INF             .          
+II      -1000.0000          .            +INF             .          
+III     -1000.0000      -985.6000        +INF             .          
+
+---- EQU Excess_c_1  Excess Check 1
+
+         LOWER          LEVEL          UPPER         MARGINAL
+
+A          .              .            +INF             .          
+B          .              .            +INF             .          
+C          .             3.6800        +INF             .          
+
+---- EQU Excess_c_2  Excess Check 2
+
+         LOWER          LEVEL          UPPER         MARGINAL
+
+A          .              .            +INF             .          
+B          .              .            +INF             .          
+C       -10.0000       -10.0000        +INF           -0.3000      
+
+---- EQU Excess_c_3  Excess Check 3
+
+         LOWER          LEVEL          UPPER         MARGINAL
+
+A        -INF         1000.0000      1000.0000          .          
+B        -INF         1000.0000      1000.0000          .          
+C        -INF            3.6800      1000.0000          .          
+
+---- EQU Excess_c_4  Excess Check 4
+
+         LOWER          LEVEL          UPPER         MARGINAL
+
+A        -INF        -1000.0000          .              .          
+B        -INF        -1000.0000          .              .          
+C        -INF          -10.0000       -10.0000          .          
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- EQU INCOME_EQ           .              .              .             1.0000      
+---- EQU EXPENSE_EQ          .              .              .            -1.0000      
+
+  INCOME_EQ  Income Equation
+  EXPENSE_EQ  Expense Equation
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- VAR Profit            -INF            0.6000        +INF             .          
+
+---- VAR UTIL  Process Utilization
+
+           LOWER          LEVEL          UPPER         MARGINAL
+
+I            .            16.0000        +INF             .          
+II           .              .            +INF           -0.0450      
+III          .            14.4000        +INF             .          
+
+---- VAR BOUGHT  Products Bought
+
+         LOWER          LEVEL          UPPER         MARGINAL
+
+A          .            16.0000        +INF             .          
+B          .              .            +INF           -0.0750      
+C          .              .            +INF             .          
+
+---- VAR PRODUCED  Products Produced
+
+         LOWER          LEVEL          UPPER         MARGINAL
+
+A          .              .            +INF           -0.5375      
+B          .              .            +INF           -0.8750      
+C          .            13.6800        +INF             .          
+
+---- VAR EXCESS  Excess Products
+
+         LOWER          LEVEL          UPPER         MARGINAL
+
+A          .              .            +INF            EPS         
+B          .              .            +INF            EPS         
+C          .             3.6800        +INF             .          
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- VAR INCOME              .            23.5200        +INF             .          
+---- VAR EXPENSE             .            22.9200        +INF             .          
+
+  INCOME  Total Income
+  EXPENSE  Total Expense
+
+---- VAR IS_ACTIVE  Process is active
+
+           LOWER          LEVEL          UPPER         MARGINAL
+
+I            .             1.0000         1.0000        -1.0000      
+II           .              .             1.0000        -1.5000      
+III          .             1.0000         1.0000        -2.0000      
+
+---- VAR IS_EXCESS  Product is excess
+
+         LOWER          LEVEL          UPPER         MARGINAL
+
+A          .             1.0000         1.0000         EPS         
+B          .             1.0000         1.0000         EPS         
+C          .              .             1.0000         EPS         
+
+
+**** REPORT SUMMARY :        0     NONOPT
+                             0 INFEASIBLE
+                             0  UNBOUNDED
+
+
+EXECUTION TIME       =        0.047 SECONDS      4 MB  36.2.0 r433180e WEX-WEI
+
+
+USER: GAMS Demo license for Phatham Loahavilai       G211118|0002CO-GEN
+      Tsinghua University, China                               DL054337
+
+
+**** FILE SUMMARY
+
+Input      C:\Users\Phatham Loahavilai\Documents\GAMS\Studio\workspace\4.2.gms
+Output     C:\Users\Phatham Loahavilai\Documents\GAMS\Studio\workspace\4.2.lst
